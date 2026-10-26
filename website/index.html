@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101411">
+  <meta name="description" content="A field guide to small, focused developer tools. Explore last-byte synchronization, understand its limits, and run a real experiment locally.">
+  <title>Tooling — Small tools. Closer look.</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="navigation wrap">
+    <a class="wordmark" href="#home" aria-label="Tooling home"><span class="mark" aria-hidden="true">↗</span> tooling<span class="muted">/</span></a>
+    <nav aria-label="Main navigation"><a href="#tools">Tools</a><a href="#lab">Timing lab</a><a href="#run">Run locally <span aria-hidden="true">↗</span></a></nav>
+  </header>
+  <main id="home">
+    <section class="hero wrap">
+      <div class="eyebrow"><span class="dot"></span> THE DEVELOPER’S FIELD GUIDE <span class="edition">VOL. 001</span></div>
+      <h1>Small tools.<br>A <em>closer</em> look.</h1>
+      <div class="hero-bottom"><p>Practical experiments for understanding what happens underneath your code. Read the idea. Explore the mechanics. Run it yourself.</p><a class="button primary" href="#tools">Explore the collection <span aria-hidden="true">↓</span></a></div>
+      <div class="hero-rule"><span>INDEPENDENT TOOLS</span><span>OPEN THE HOOD.</span><span>RUN LOCALLY</span></div>
+    </section>
+
+    <section id="tools" class="wrap section">
+      <div class="section-heading"><p class="eyebrow">01 / THE COLLECTION</p><span class="muted">One tool. Room to grow.</span></div>
+      <a class="tool-entry" href="#concept"><span class="tool-number">001</span><div><div class="tags"><span>NETWORKING</span><span>PYTHON · STANDARD LIBRARY</span></div><h2>Last-byte<br>synchronization</h2><p>Stage requests on separate connections, hold back one byte, then release their final bytes close together.</p></div><span class="entry-arrow" aria-hidden="true">↗</span></a>
+      <p class="collection-note">Each tool lives in its own folder with its own implementation, example, and detailed README. This guide connects the concepts.</p>
+    </section>
+
+    <section id="concept" class="concept section">
+      <div class="wrap concept-grid"><div><p class="eyebrow">02 / THE IDEA</p><h2>Almost sent.<br>Then, together.</h2><p>An HTTP/1.1 request with a declared body length is incomplete until every body byte arrives. Send everything except the last byte on each connection, wait for preparation, then send the tails in a tight loop.</p><p>That moves most connection setup and request transfer ahead of the moment you want to coordinate.</p></div><div class="wire"><div class="panel-label">ONE REQUEST / TWO WRITES</div><pre><code>POST /measure HTTP/1.1
+Content-Length: 5
+Connection: close
+
+<span class="prefix">hell</span><span class="tail">o</span></code></pre><div class="wire-key"><span><i class="prefix-key"></i> Sent during preparation</span><span><i class="tail-key"></i> Withheld until release</span></div><p>“hello” is 5 bytes. The final “o” completes the body.</p></div></div>
+      <div class="wrap steps"><div><span>01</span><h3>Connect</h3><p>Open independent TCP connections. Complete TLS first for HTTPS.</p></div><div><span>02</span><h3>Stage</h3><p>Send headers and all but the last body byte. Wait until every local write succeeds.</p></div><div><span>03</span><h3>Release</h3><p>After a short hold, send each final byte sequentially from one tight loop.</p></div><div><span>04</span><h3>Measure</h3><p>Collect responses and compare completion timestamps at the server.</p></div></div>
+    </section>
+
+    <section id="lab" class="wrap section lab-section">
+      <div class="section-heading"><p class="eyebrow">03 / INTERACTIVE LAB</p><span class="muted">Illustration · no network requests</span></div>
+      <div class="lab-intro"><h2>The last byte<br>makes it complete.</h2><p>Stage a batch, then release it. Each row represents a separate connection. The illustration shows the sequence; it does not predict real timing.</p></div>
+      <div class="lab-panel"><div class="lab-toolbar"><label for="count">CONNECTIONS <output id="count-value" for="count">4</output></label><input id="count" type="range" min="2" max="12" value="4"><span id="phase" class="phase">READY</span></div><div class="diagram-head"><span>CLIENT → SERVER</span><span>BODY BYTES</span><span>STATE</span></div><div id="lanes" class="lanes"></div><div class="lab-controls"><button id="stage" class="button primary" type="button">1. Stage requests</button><button id="release" class="button" type="button" disabled>2. Release last bytes</button><button id="reset" class="reset" type="button">Reset</button></div><p id="lab-status" class="lab-status" role="status" aria-live="polite">Ready: no request bytes have been sent in this illustration.</p></div>
+      <div class="lab-caption"><span class="dot"></span><p>In the real client, releasing bytes is a sequence of socket writes. A small local release gap can still become a larger gap at the server.</p></div>
+    </section>
+
+    <section class="wrap section reality"><p class="eyebrow">04 / THE IMPORTANT DISTINCTIONS</p><h2>Close in time.<br>Not a worker guarantee.</h2><div class="reality-grid"><article><span class="reality-symbol">≈</span><h3>Completion vs. execution</h3><p>The technique delays full-body completion. A server may route requests or begin streaming work before it receives the final byte. Use an endpoint whose relevant operation waits for the entire body.</p></article><article><span class="reality-symbol">↗</span><h3>Timing vs. routing</h3><p>A load balancer and the server’s concurrency model choose the backend, process, thread, or coroutine. Timing alone does not establish affinity. Log worker identity to check what actually happened.</p></article><article><span class="reality-symbol">≠</span><h3>Local writes vs. arrivals</h3><p>TCP scheduling, TLS records, proxy buffering, and application scheduling add variation. TCP_NODELAY disables Nagle’s buffering; it does not guarantee immediate delivery or a packet boundary.</p></article></div><aside class="note"><strong>And HTTP/2?</strong><p>The single-packet technique multiplexes requests over one connection. This tool uses separate HTTP/1.1 connections; their final bytes cannot share a single TCP packet.</p></aside></section>
+
+    <section id="run" class="run section"><div class="wrap run-grid"><div><p class="eyebrow">05 / FROM CONCEPT TO TERMINAL</p><h2>Run the real<br>experiment.</h2><p>Python 3.10+ is all you need. The demo starts an instrumented loopback server, stages eight requests, measures completion times, and shuts down.</p><p>No external service. No dependencies. Run these commands from the repository root.</p></div><div><div class="terminal"><div class="terminal-bar"><span class="dot"></span> TERMINAL <button type="button" class="copy" data-copy="python3 last-byte-synchronization/demo.py">Copy command</button></div><pre><code><span class="muted"># Run the instrumented local example</span>
+python3 last-byte-synchronization/demo.py
+
+<span class="muted"># Run the verification suite</span>
+python3 -m unittest discover \
+  -s last-byte-synchronization -v</code></pre></div><div class="metric-note"><span>READ THE OUTPUT</span><p><code>release_span_ns</code> measures the client’s release loop. <code>server_complete_body_spread_ns</code> measures the demo server’s earliest-to-latest body completion. Nanosecond units do not mean nanosecond accuracy.</p></div></div></div></section>
+
+    <section class="wrap section reference"><p class="eyebrow">06 / KEEP EXPLORING</p><h2>Go one layer deeper.</h2><div class="reference-links"><a href="https://github.com/SpencerWoo/tooling/tree/main/last-byte-synchronization"><span><strong>Implementation & usage</strong><small>Client options, binary payloads, HTTPS, errors, and tests</small></span><span aria-hidden="true">↗</span></a><a href="https://portswigger.net/research/smashing-the-state-machine"><span><strong>Original research</strong><small>PortSwigger · Smashing the state machine</small></span><span aria-hidden="true">↗</span></a><a href="https://www.rfc-editor.org/rfc/rfc9112.html#section-6.3"><span><strong>HTTP/1.1 message framing</strong><small>RFC 9112 · How body length defines completion</small></span><span aria-hidden="true">↗</span></a></div></section>
+  </main>
+  <footer class="wrap"><a class="wordmark" href="#home">↗ tooling/</a><p>Small, independent tools. Understood from the inside out.</p><a href="https://github.com/SpencerWoo/tooling">Source repository ↗</a></footer>
+</body>
+</html>
