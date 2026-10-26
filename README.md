@@ -5,6 +5,9 @@ A collection of independent tools. Each tool lives in its own subfolder and owns
 ## Tools
 
 - [Last-byte synchronization](last-byte-synchronization/README.md) — coordinate the completion of HTTP/1.1 requests by withholding and releasing their final body byte. Includes a Python client, an instrumented local demo, and protocol notes.
+- [Market microstructure](market-microstructure/README.md) — one three-part deep dive into order books, options market-maker latency and order flow, and crypto MEV. Includes detailed chapters and three interactive local illustrations.
+
+See [TODO.md](TODO.md) for proposed tools and experiments to build next.
 
 ## Website
 
@@ -18,12 +21,13 @@ Open http://127.0.0.1:8000. No installation or build is required.
 
 ## Repository layout
 
-The root contains only this `README.md`, `.gitignore`, and subfolders (alongside Git's internal `.git/` directory). Each tool has its own folder; `website/` contains the shared documentation site.
+The root contains this `README.md`, `.gitignore`, the `TODO.md` idea list, and subfolders (alongside Git's internal `.git/` directory). Each tool has its own folder; `website/` contains the shared documentation site.
 
 ```text
 tooling/
 ├── README.md
 ├── .gitignore
+├── TODO.md
 ├── website/
 │   ├── README.md
 │   └── ...
